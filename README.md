@@ -1,3 +1,7 @@
+### Changes to corbanmailloux/esp-mqtt-rgb-led
+- Added parameter for PWM resolution, to fully use the ESP8266's 10 bit PWM
+- Fixed the overshooting bug when fading
+
 # ESP8266 MQTT RGB(W) Lights Using JSON for Home Assistant
 
 This project adds an easy way to create DIY lighting for [Home Assistant](https://home-assistant.io/), an amazing, extensible, open-source home automation system.
