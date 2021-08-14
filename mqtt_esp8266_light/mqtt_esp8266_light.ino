@@ -27,11 +27,11 @@ const bool includeWhite = (CONFIG_STRIP == BRIGHTNESS) || (CONFIG_STRIP == RGBW)
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(20);
 
 // Maintained state for reporting to HA
-byte red = 255;
-byte green = 255;
-byte blue = 255;
-byte white = 255;
-byte brightness = 255;
+byte red = PWM_RANGE;
+byte green = PWM_RANGE;
+byte blue = PWM_RANGE;
+byte white = PWM_RANGE;
+byte brightness = PWM_RANGE;
 
 // Real values to write to the LEDs (ex. including brightness and state)
 byte realRed = 0;
@@ -66,13 +66,13 @@ bool colorfade = false;
 int currentColor = 0;
 // {red, grn, blu, wht}
 const byte colors[][4] = {
-  {255, 0, 0, 0},
-  {0, 255, 0, 0},
-  {0, 0, 255, 0},
-  {255, 80, 0, 0},
-  {163, 0, 255, 0},
-  {0, 255, 255, 0},
-  {255, 255, 0, 0}
+  {PWM_RANGE, 0, 0, 0},
+  {0, PWM_RANGE, 0, 0},
+  {0, 0, PWM_RANGE, 0},
+  {PWM_RANGE, (int) (PWM_RANGE / 3.18), 0, 0},
+  {(int) (PWM_RANGE / 1.5), 0, 255, 0},
+  {0, PWM_RANGE, PWM_RANGE, 0},
+  {PWM_RANGE, PWM_RANGE, 0, 0}
 };
 const int numColors = 7;
 
@@ -103,7 +103,7 @@ void setup() {
       break;
   }
 
-  analogWriteRange(255);
+  analogWriteRange(PWM_RANGE);
 
   if (CONFIG_DEBUG) {
     Serial.begin(115200);
@@ -226,7 +226,7 @@ bool processJson(char* message) {
     }
 
     if (root.containsKey("brightness")) {
-      flashBrightness = root["brightness"];
+      flashBrightness = map(root["brightness"], 0, 255, 0, PWM_RANGE);
     }
     else {
       flashBrightness = brightness;
@@ -273,7 +273,7 @@ bool processJson(char* message) {
   else if (colorfade && !root.containsKey("color") && root.containsKey("brightness")) {
     // Adjust brightness during colorfade
     // (will be applied when fading to the next color)
-    brightness = root["brightness"];
+    brightness = map(root["brightness"], 0, 255, 0, PWM_RANGE);
   }
   else { // No effect
     flash = false;
@@ -290,7 +290,7 @@ bool processJson(char* message) {
     }
 
     if (root.containsKey("brightness")) {
-      brightness = root["brightness"];
+      brightness = map(root["brightness"], 0, 255, 0, PWM_RANGE);
     }
 
     if (root.containsKey("transition")) {
@@ -317,7 +317,7 @@ void sendState() {
     color["b"] = blue;
   }
 
-  root["brightness"] = brightness;
+  root["brightness"] = map(brightness, 0, PWM_RANGE, 0 ,255);
 
   if (includeWhite) {
     root["white_value"] = white;
@@ -361,10 +361,10 @@ void reconnect() {
 
 void setColor(int inR, int inG, int inB, int inW) {
   if (CONFIG_INVERT_LED_LOGIC) {
-    inR = (255 - inR);
-    inG = (255 - inG);
-    inB = (255 - inB);
-    inW = (255 - inW);
+    inR = (PWM_RANGE - inR);
+    inG = (PWM_RANGE - inG);
+    inB = (PWM_RANGE - inB);
+    inW = (PWM_RANGE - inW);
   }
 
   if (rgb) {
@@ -480,6 +480,12 @@ void loop() {
         loopCount++;
       }
       else {
+        // Set the requested colors to counteract rounding errors in the settping
+        setColor(realRed, realGreen, realBlue, realWhite);
+        redVal = realRed;
+        grnVal = realGreen;
+        bluVal = realBlue;
+        whtVal = realWhite;
         inFade = false;
       }
     }
@@ -540,8 +546,8 @@ int calculateVal(int step, int val, int i) {
     }
 
     // Defensive driving: make sure val stays in the range 0-255
-    if (val > 255) {
-        val = 255;
+    if (val > PWM_RANGE) {
+        val = PWM_RANGE;
     }
     else if (val < 0) {
         val = 0;

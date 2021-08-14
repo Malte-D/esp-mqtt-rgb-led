@@ -64,3 +64,6 @@ enum strip {
 
 // Enables Serial and print statements
 #define CONFIG_DEBUG false
+
+//
+#define PWM_RANGE 1023
